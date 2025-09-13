@@ -59,6 +59,10 @@ app.*.map.json
 **/*.out
 **/go.work
 
+# Go packages
+*.pkg
+app/go.pkg
+
 # Go IDE files
 **/.vscode/
 **/.idea/
@@ -182,6 +186,18 @@ obj/
 *.zip
 *.rar
 *.7z
+
+# Large build artifacts
+*.dmg
+*.exe
+*.msi
+*.deb
+*.rpm
+*.apk
+*.ipa
+*.aab
+*.app
+*.AppImage
 
 # ===========================================
 # Testing and Coverage
