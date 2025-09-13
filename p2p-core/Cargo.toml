@@ -1,0 +1,43 @@
+[package]
+name = "p2p_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true }
+
+# P2P networking - simplified for Android compatibility
+mdns-sd = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Flutter Bridge
+flutter_rust_bridge = "=2.11.1"
+
+# Utilities
+futures = { workspace = true }
+bytes = "1.5"
+async-trait = "0.1"
+
+# Use get_if_addrs only on non-Android platforms
+[target.'cfg(not(target_os = "android"))'.dependencies]
+get_if_addrs = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"
+criterion = "0.5"
+tokio-test = "0.4"

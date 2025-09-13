@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Discovery Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        #status { font-weight: bold; margin: 10px 0; }
+        #peers { margin-top: 20px; }
+        .peer { padding: 10px; margin: 5px 0; background: #f0f0f0; }
+        button { padding: 10px 20px; margin: 5px; }
+        #log { background: #333; color: #0f0; padding: 10px; font-family: monospace; height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Discovery Test Client</h1>
+    <div id="status">Disconnected</div>
+
+    <button onclick="connect()">Connect</button>
+    <button onclick="requestPeers()">Request Peers</button>
+    <button onclick="disconnect()">Disconnect</button>
+
+    <div id="peers">
+        <h3>Discovered Peers:</h3>
+        <div id="peerList"></div>
+    </div>
+
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        let myPeerId = null;
+
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toISOString().substr(11, 8) + ' ' + msg + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function connect() {
+            if (ws) {
+                log('Already connected');
+                return;
+            }
+
+            // Connect to signaling server
+            ws = new WebSocket('ws://localhost:8081/ws');
+
+            ws.onopen = () => {
+                log('Connected to signaling server');
+                document.getElementById('status').textContent = 'Connected';
+
+                // Register ourselves
+                setTimeout(() => {
+                    const msg = {
+                        type: 'register',
+                        name: 'Browser-Test-Client',
+                        device_type: 'browser',
+                        port: 8080
+                    };
+                    ws.send(JSON.stringify(msg));
+                    log('Sent registration');
+                }, 500);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                log('Received: ' + data.type);
+
+                switch(data.type) {
+                    case 'welcome':
+                        myPeerId = data.peer_id;
+                        log('My peer ID: ' + myPeerId);
+                        break;
+
+                    case 'peer_joined':
+                        log('Peer joined: ' + data.name + ' (' + data.device_type + ')');
+                        addPeer(data);
+                        break;
+
+                    case 'peers_list':
+                        log('Got ' + (data.peers ? data.peers.length : 0) + ' peers');
+                        if (data.peers) {
+                            document.getElementById('peerList').innerHTML = '';
+                            data.peers.forEach(peer => addPeer(peer));
+                        }
+                        break;
+
+                    case 'peer_left':
+                        log('Peer left: ' + data.peer_id);
+                        removePeer(data.peer_id);
+                        break;
+                }
+            };
+
+            ws.onerror = (error) => {
+                log('WebSocket error: ' + error);
+            };
+
+            ws.onclose = () => {
+                log('Disconnected from server');
+                document.getElementById('status').textContent = 'Disconnected';
+                ws = null;
+            };
+        }
+
+        function requestPeers() {
+            if (!ws) {
+                log('Not connected');
+                return;
+            }
+
+            const msg = { type: 'get_peers' };
+            ws.send(JSON.stringify(msg));
+            log('Requested peer list');
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function addPeer(peer) {
+            const peerDiv = document.createElement('div');
+            peerDiv.className = 'peer';
+            peerDiv.id = 'peer-' + peer.id;
+            peerDiv.innerHTML = `
+                <strong>${peer.name}</strong> (${peer.device_type})<br>
+                IP: ${peer.ip || 'N/A'}, Port: ${peer.port || 'N/A'}
+            `;
+            document.getElementById('peerList').appendChild(peerDiv);
+        }
+
+        function removePeer(peerId) {
+            const peerDiv = document.getElementById('peer-' + peerId);
+            if (peerDiv) {
+                peerDiv.remove();
+            }
+        }
+
+        // Auto-connect on load
+        window.onload = () => {
+            connect();
+        };
+    </script>
+</body>
+</html>
